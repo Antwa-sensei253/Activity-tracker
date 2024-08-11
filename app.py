@@ -1,9 +1,8 @@
-import psutil
-import time
-import json
+from time import time, sleep
+from json import dump
 from datetime import datetime
 from threading import Thread
-import signal
+from signal import signal, SIGINT
 import sys
 from flask import Flask, render_template, jsonify
 
@@ -21,11 +20,11 @@ def get_active_window():
 
 def track_app_usage():
     global app_usage
-    start_time = time.time()
+    start_time = time()
     end_time = start_time + tracking_duration
 
     try:
-        while time.time() < end_time:
+        while time() < end_time:
             current_app = get_active_window()
             current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -34,13 +33,13 @@ def track_app_usage():
             else:
                 app_usage[current_app] = {'start_time': current_time, 'duration': report_interval}
 
-            time.sleep(report_interval)
+            sleep(report_interval)
     finally:
         save_usage_to_json(app_usage)
 
 def save_usage_to_json(app_usage, filename='app_usage.json'):
     with open(filename, 'w') as f:
-        json.dump(app_usage, f, indent=4)
+        dump(app_usage, f, indent=4)
 
 @app.route('/')
 def index():
@@ -50,7 +49,7 @@ def index():
 def data():
     return jsonify(app_usage)
 
-def signal_handler(sig, frame):
+def signal_handler():
     global app_usage
     print("Interrupt received, saving usage data to JSON...")
     save_usage_to_json(app_usage)
@@ -58,7 +57,7 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGINT, signal_handler)
+    signal(SIGINT, signal_handler)
 
     tracking_thread = Thread(target=track_app_usage)
     tracking_thread.start()
